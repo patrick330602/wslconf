@@ -1,15 +1,15 @@
 #!/bin/bash
 # Get 
 function cmd_version {
-    abranch=$((cd /mnt/c && cmd.exe /C "reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v BuildBranch") | tail -n 2 | head -n 1 | sed -e 's|\r||g')
-    abranch=${abranch##* }
-    echo "$abranch"
+    branch=$((cd /mnt/c && cmd.exe /C "reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v BuildBranch") | tail -n 2 | head -n 1 | sed -e 's|\r||g')
+    branch=${branch##* }
+    echo "$branch"
 }
 
 function dexec_version {
-    bbranch=$(reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v BuildBranch | tail -n 2 | head -n 1 | sed -e 's|\r||g')
-    bbranch=${bbranch##* }
-    echo "$bbranch"
+    branch=$(reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v BuildBranch | tail -n 2 | head -n 1 | sed -e 's|\r||g')
+    branch=${branch##* }
+    echo "$branch"
 }
 
 function psh_version {
