@@ -1,10 +1,10 @@
 # Scripting with WSL interoperability: Tips & Tricks
 
-This is tech resource page for everything talked about or not talked about in the Session **Scripting with WSL interoperability: Tips & Tricks** on **WSLconf**.
+This is the tech resource page for everything talked about or not talked about in the Session **Scripting with WSL interoperability: Tips & Tricks** on **WSLconf**.
 
-Powerpoint can be retrived here: <>
+Powerpoint can be retrieved here: <>
 
-## WSL Feature Availability on different version
+## WSL Feature Availability on a different version
 
 | | 1607 | 1703 | 1709 | 1803, 1809 | 1903, 1909 | 2004 |
 |---:|:---:|:---:|:---:|:---:|:---:|:---:|
