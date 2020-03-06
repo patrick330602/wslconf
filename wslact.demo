@@ -1,0 +1,207 @@
+#!/bin/bash
+# wslact.demo - A demo version of Windows 10 linux Subsystem Utility
+# 
+# NOTE
+# ********
+# This version of wslact is designed for the demo in WSLConf. This 
+# version will not ship with wslu 3.0.0
+#
+# Copyright (C) 2020 Patrick Wu
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Version
+wslu_version=3.0.0
+
+# checking interoperability
+grep enabled /proc/sys/fs/binfmt_misc/WSLInterop >/dev/null || (echo -e "\e[31m\033[1m[error] WSL Interoperability is disabled. Please enable it before using WSL.\033(B\033[m"; exit 1)
+
+# variables
+## color
+black=$(echo -e '\e[30m')
+red=$(echo -e '\e[31m')
+green=$(echo -e '\e[32m')
+brown=$(echo -e '\e[33m')
+blue=$(echo -e '\e[34m')
+purple=$(echo -e '\e[35m')
+cyan=$(echo -e '\e[36m')
+yellow=$(echo -e '\e[1;33m')
+white=$(echo -e '\e[1;37m')
+dark_gray=$(echo -e '\e[1;30m')
+light_red=$(echo -e '\e[1;31m')
+light_green=$(echo -e '\e[1;32m')
+light_blue=$(echo -e '\e[1;34m')
+light_purple=$(echo -e '\e[1;35m')
+light_cyan=$(echo -e '\e[1;36m')
+light_gray=$(echo -e '\e[37m')
+orange=$(echo -e '\e[38;5;202m')
+light_orange=$(echo -e '\e[38;5;214m')
+bold=$(echo -e '\033[1m')
+reset=$(echo -e '\033(B\033[m')
+
+## indicator
+info="${green}[info]${reset}"
+input_info="${cyan}[input]${reset}"
+error="${red}[error]${reset}"
+warn="${orange}[warn]${reset}"
+
+## Windows build number constant
+readonly BN_SPR_CREATORS=15063		#1703, Redstone 2, Creators Update
+readonly BN_FAL_CREATORS=16299		#1709, Redstone 3, Fall Creators Update
+readonly BN_APR_EIGHTEEN=17134		#1803, Redstone 4, April 2018 Update
+readonly BN_OCT_EIGHTEEN=17763		#1809, Redstone 5, October 2018 Update
+readonly BN_MAY_NINETEEN=18362		#1903, 19H1, May 2019 Update
+readonly BN_NOV_NINETEEN=18363		#1909, 19H2, November 2019 Update
+
+# functions
+function debug_echo {
+	[ $wslu_debug -eq 1 ] && echo "${orange}${bold}[debug]${reset} $@"
+}
+
+function help {
+	app_name=$(basename "$1")
+	echo -e "$app_name - Part of wslu, a collection of utilities for Windows 10 Windows Subsystem for Linux
+Usage: $2
+
+For more help for $app_name, please use `man $app_name` visit the following site: https://wslu.patrickwu.space/man/$app_name.html"
+}
+
+function double_dash_p {
+	echo "${@//\\/\\\\}"
+}
+
+function interop_prefix {
+
+	win_location="/mnt/"
+	if [ -f /etc/wsl.conf ]; then
+		tmp="$(awk -F '=' '/root/ {print $2}' /etc/wsl.conf | awk '{$1=$1;print}')"
+		[ "$tmp" == "" ] || win_location="$tmp"
+		unset tmp
+	fi
+	echo "$win_location"
+
+	unset win_location
+}
+
+function sysdrive_prefix {
+	win_location="$(interop_prefix)"
+	hard_reset=0
+	for pt in $(ls "$win_location"); do
+		if [ $(echo "$pt" | wc -l) -eq 1 ]; then
+			if [ -d "$win_location$pt/Windows/System32" ]; then
+				hard_reset=1
+				win_location="$pt"
+				break
+			fi
+		fi 
+	done
+
+	if [ $hard_reset -eq 0 ]; then
+		win_location="c"
+	fi
+
+	echo "$win_location"
+
+	unset win_location
+	unset hard_reset
+}
+
+function chcp_com {
+	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/chcp.com "$@" >/dev/null
+}
+
+function winps_exec {
+	chcp_com "$(cat ~/.config/wslu/oemcp)"
+	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -NonInteractive –ExecutionPolicy Bypass -Command "$@"
+	EXIT_STATUS=$?
+	chcp_com 65001
+	return $EXIT_STATUS
+}
+
+function wslu_file_check {
+	if [[ ! -f "$1/$2" ]]; then
+		echo "${warn} $2 not found in Windows directory. Copying right now..."
+		[[ -d "$1" ]] || mkdir "$1"
+		if [[ -f "/usr/share/wslu/$2" ]]; then
+			cp "/usr/share/wslu/$2" "$1"
+			echo "${info} $2 copied. Located at \"$1\"."
+		else
+			echo "${error} $2 not found. Failed to copy."
+			exit 30
+		fi
+	fi
+}
+
+version="03"
+
+help_short="wslact COMMAND ..."
+
+function smart_mount {
+	local help_short="wslact smart-mount [-h]"
+
+	while [ "$1" != "" ]; do
+		case "$1" in
+			-h|--help) help "wslact" "$help_short"; exit;;
+			*) shift;;
+		esac
+	done
+
+	if [ "$EUID" -ne 0 ]
+		then echo "${error} \`wslact smart-mount\` requires you to run as root. Aborted."
+		exit 1
+	fi
+
+	mount_opt=""
+	drive_list="$("$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/fsutil.exe fsinfo drives | tail -1 | tr '[:upper:]' '[:lower:]' | tr -d ':\\' | sed -e 's/drives //g' -e 's|'$(sysdrive_prefix)' ||g' -e 's|\r||g' -e 's| $||g' -e 's| |\n|g')"
+
+	if [ -f /etc/wsl.conf ]; then
+		tmp="$(grep ^options /etc/wsl.conf | sed -r -e 's|^options[ ]+=[ ]+||g' -e 's|^"||g' -e 's|"$||g')"
+		if [ "$tmp" != "" ]; then
+			echo "${info} Custom mount option detected: $tmp"
+			mount_opt="$tmp"
+			unset tmp
+		fi
+	fi
+
+	mount_s=0
+	mount_f=0
+	mount_j=0
+	
+	for drive in $drive_list; do
+		[[ -d "/mnt/$drive" ]] || mkdir -p "/mnt/$drive"
+		if [[ -n $(find "/mnt/$drive" -maxdepth 0 -type d -empty) ]]; then
+			echo "${info} Mounting Drive ${drive^} to /mnt/$drive..."
+			if mount -t drvfs ${drive}: "/mnt/$drive" -o "$mount_opt"; then
+				echo "${info} Mounted Drive ${drive^} to /mnt/$drive."
+				mount_s=$((mount_s + 1))
+			else
+				echo "${error} Failed to mount Drive ${drive^}. Skipped."
+				mount_f=$((mount_f + 1))
+			fi
+		else
+			echo "${warn} Already mounted Drive ${drive^} at /mnt/$drive. Skipped."
+			mount_j=$((mount_j + 1))
+		fi
+	done
+	echo "${info} Smart mounting completed. $mount_s drive(s) succeed. $mount_f drive(s) failed. $mount_j drive(s) skipped."
+}
+
+while [ "$1" != "" ]; do
+	case "$1" in
+		sm|smart-mount) smart_mount "$@"; exit;;
+		-h|--help) help "$0" "$help_short"; exit;;
+		-v|--version) echo "wslu v$wslu_version; wslact v$version"; exit;;
+		*) echo "${error} Invalid Input. Aborted."; exit 22;;
+	esac
+done
