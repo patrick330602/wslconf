@@ -77,10 +77,6 @@ Usage: $2
 For more help for $app_name, please use `man $app_name` visit the following site: https://wslu.patrickwu.space/man/$app_name.html"
 }
 
-function double_dash_p {
-	echo "${@//\\/\\\\}"
-}
-
 function interop_prefix {
 
 	win_location="/mnt/"
@@ -117,10 +113,12 @@ function sysdrive_prefix {
 	unset hard_reset
 }
 
+# wrapper for chcp.com
 function chcp_com {
 	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/chcp.com "$@" >/dev/null
 }
 
+# wrapper for executing WSL
 function winps_exec {
 	chcp_com "$(cat ~/.config/wslu/oemcp)"
 	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -NonInteractive –ExecutionPolicy Bypass -Command "$@"
@@ -129,34 +127,21 @@ function winps_exec {
 	return $EXIT_STATUS
 }
 
-function wslu_file_check {
-	if [[ ! -f "$1/$2" ]]; then
-		echo "${warn} $2 not found in Windows directory. Copying right now..."
-		[[ -d "$1" ]] || mkdir "$1"
-		if [[ -f "/usr/share/wslu/$2" ]]; then
-			cp "/usr/share/wslu/$2" "$1"
-			echo "${info} $2 copied. Located at \"$1\"."
-		else
-			echo "${error} $2 not found. Failed to copy."
-			exit 30
-		fi
-	fi
-}
+# first run, saving some information
+if [ ! -d ~/.config/wslu ]; then
+	mkdir -p ~/.config/wslu
+fi
+
+# generate oem codepage
+if [ ! -f ~/.config/wslu/oemcp ]; then
+	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Nls\\CodePage" /v OEMCP 2>&1 | sed -n 3p | sed -e 's|\r||g' | grep -o '[[:digit:]]*' > ~/.config/wslu/oemcp
+fi
 
 version="03"
 
 help_short="wslact COMMAND ..."
 
 function smart_mount {
-	local help_short="wslact smart-mount [-h]"
-
-	while [ "$1" != "" ]; do
-		case "$1" in
-			-h|--help) help "wslact" "$help_short"; exit;;
-			*) shift;;
-		esac
-	done
-	
 	mount_opt=""
 	drive_list="$("$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/fsutil.exe fsinfo drives | tail -1 | tr '[:upper:]' '[:lower:]' | tr -d ':\\' | sed -e 's/drives //g' -e 's|'$(sysdrive_prefix)' ||g' -e 's|\r||g' -e 's| $||g' -e 's| |\n|g')"
 
@@ -165,8 +150,8 @@ function smart_mount {
 		if [ "$tmp" != "" ]; then
 			echo "${info} Custom mount option detected: $tmp"
 			mount_opt="$tmp"
-			unset tmp
 		fi
+		unset tmp
 	fi
 
 	mount_s=0
@@ -174,10 +159,10 @@ function smart_mount {
 	mount_j=0
 	
 	for drive in $drive_list; do
-		[[ -d "/mnt/$drive" ]] || mkdir -p "/mnt/$drive"
-		if [[ -n $(find "/mnt/$drive" -maxdepth 0 -type d -empty) ]]; then
+		[[ -d "/mnt/$drive" ]] || "$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/wsl.exe -d $WSL_DISTRO_NAME -u root -e mkdir -p "/mnt/$drive"
+		if [[ -n $(find "/mnt/$drive" -maxdepth 0 -type d -empty 2>/dev/null) ]]; then
 			echo "${info} Mounting Drive ${drive^} to /mnt/$drive..."
-			if "$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/wsl.exe -d $WSL_DISTRO_NAME -u root -e mount -t drvfs ${drive}: "/mnt/$drive" -o "$mount_opt"; then
+			if "$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/wsl.exe -d $WSL_DISTRO_NAME -u root -e mount -t drvfs ${drive}: "/mnt/$drive" -o "$mount_opt" 2>/dev/null; then
 				echo "${info} Mounted Drive ${drive^} to /mnt/$drive."
 				mount_s=$((mount_s + 1))
 			else
