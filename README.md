@@ -2,9 +2,9 @@
 
 This is code page for the Session **Scripting with WSL interoperability: Tips & Tricks** on [**WSLconf**](https://wslconf.dev/).
 
-Powerpoint can be retrieved here: <>
+Powerpoint can be retrieved here: <https://cdn.patrickwu.space/works/wslconf/wslconf-wsl-interop.pptx>
 
-Presentation content here: <https://patrickwu.space/wslconf>
+Presentation resources and extra content here: <https://patrickwu.space/wslconf>
 
 
 ## License
