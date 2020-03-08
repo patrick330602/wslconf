@@ -10,5 +10,5 @@ Presentation content here: <https://patrickwu.space/wslconf>
 ## License
 <img width="150" src="https://www.gnu.org/graphics/gplv3-with-text-136x68.png">
 
-All scripts and/or contents here are released under [GPLv3](LICENSE) License.
+All scripts and/or contents here are released under [GPLv3](LICENSE) License unless specified.
 
