@@ -1,5 +1,5 @@
 #!/bin/bash
-# wslact.demo - A demo version of Windows 10 linux Subsystem Utility
+# wslact- A demo version of Windows 10 linux Subsystem Utility
 # 
 # NOTE
 # ********
@@ -74,7 +74,7 @@ function help {
 	echo -e "$app_name - Part of wslu, a collection of utilities for Windows 10 Windows Subsystem for Linux
 Usage: $2
 
-For more help for $app_name, please use `man $app_name` visit the following site: https://wslu.patrickwu.space/man/$app_name.html"
+For more help for $app_name, please use `man $app_name` visit the following site: https://wslutiliti.es/man/$app_name.html"
 }
 
 function interop_prefix {
@@ -141,7 +141,7 @@ version="03"
 
 help_short="wslact COMMAND ..."
 
-function smart_mount {
+function auto_mount {
 	mount_opt=""
 	drive_list="$("$(interop_prefix)/$(sysdrive_prefix)"/WINDOWS/system32/fsutil.exe fsinfo drives | tail -1 | tr '[:upper:]' '[:lower:]' | tr -d ':\\' | sed -e 's/drives //g' -e 's|'$(sysdrive_prefix)' ||g' -e 's|\r||g' -e 's| $||g' -e 's| |\n|g')"
 
@@ -174,12 +174,12 @@ function smart_mount {
 			mount_j=$((mount_j + 1))
 		fi
 	done
-	echo "${info} Smart mounting completed. $mount_s drive(s) succeed. $mount_f drive(s) failed. $mount_j drive(s) skipped."
+	echo "${info} Auto mounting completed. $mount_s drive(s) succeed. $mount_f drive(s) failed. $mount_j drive(s) skipped."
 }
 
 while [ "$1" != "" ]; do
 	case "$1" in
-		sm|smart-mount) smart_mount "$@"; exit;;
+		am|auto-mount) auto_mount "$@"; exit;;
 		-h|--help) help "$0" "$help_short"; exit;;
 		-v|--version) echo "wslu v$wslu_version; wslact v$version"; exit;;
 		*) echo "${error} Invalid Input. Aborted."; exit 22;;
